@@ -1,0 +1,116 @@
+# ----------------------------------------------------------------------
+# Flutter / Dart General
+# ----------------------------------------------------------------------
+# Build output directory
+build/
+
+# Ephemeral Dart/Flutter files generated during build or packages pub get
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+
+# Avoid committing local configurations
+local.properties
+
+# Symbol map files generated when building release apps
+*.symbols
+*.map
+
+# ----------------------------------------------------------------------
+# Android
+# ----------------------------------------------------------------------
+# Android Studio / Gradle output
+android/.gradle/
+android/captures/
+android/app/build/
+android/app/profile/
+android/app/release/
+android/app/debug/
+
+# Android generated plugin code
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+
+# ----------------------------------------------------------------------
+# iOS / macOS
+# ----------------------------------------------------------------------
+# Xcode build and ephemeral files
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app_framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+
+**/macos/Flutter/ephemeral/
+**/macos/Flutter/ephemeral/Flutter-Generated.xcconfig
+
+# Xcode user settings and build outputs
+**/Pods/
+**/.symlinks/
+*.xcworkspace
+!**/Runner.xcworkspace
+*.xcodeproj/*
+!**/Runner.xcodeproj/project.pbxproj
+!**/Runner.xcodeproj/xcshareddata/
+!**/Runner.xcworkspace/contents.xcworkspacedata
+**/xcuserdata/
+
+# Derived Data & Archives
+*.xcarchive
+
+# ----------------------------------------------------------------------
+# Windows / Desktop
+# ----------------------------------------------------------------------
+# CMake build artifacts and generated plugins
+windows/flutter/ephemeral/
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugin_registrant.h
+windows/flutter/generated_plugins.cmake
+
+# Visual Studio / C++ build artifacts
+*.vcxproj.user
+*.vcxproj.default
+*.sln.docstates
+*.suo
+*.idb
+*.pdb
+*.obj
+*.lib
+*.dll
+*.exe
+
+# Local Flutter dependency cache
+.flutter-plugins-dependencies
+
+# ----------------------------------------------------------------------
+# Linux
+# ----------------------------------------------------------------------
+linux/flutter/ephemeral/
+linux/flutter/generated_plugin_registrant.cc
+linux/flutter/generated_plugin_registrant.h
+linux/flutter/generated_plugins.cmake
+
+# ----------------------------------------------------------------------
+# Web
+# ----------------------------------------------------------------------
+# Web build artifacts
+web/manifest.json.tmp
+
+# ----------------------------------------------------------------------
+# IDE & System Files
+# ----------------------------------------------------------------------
+# JetBrains / Android Studio (.idea directory, .iml files)
+.idea/
+*.iml
+
+# Visual Studio Code
+.vscode/
+
+# macOS / OS X system files
+.DS_Store
+.apple_names
+
+# Windows system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
