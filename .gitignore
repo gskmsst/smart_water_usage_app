@@ -82,6 +82,9 @@ windows/flutter/generated_plugins.cmake
 # Local Flutter dependency cache
 .flutter-plugins-dependencies
 
+# Firebase CLI debug output
+firebase-debug.log
+
 # ----------------------------------------------------------------------
 # Linux
 # ----------------------------------------------------------------------
@@ -116,3 +119,5 @@ ehthumbs.db
 Desktop.ini
 
 .metadata
+# Widget Preview related
+.widget_preview/
