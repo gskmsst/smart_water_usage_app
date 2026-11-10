@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+
+import 'alerts_screen.dart';
 import 'analytics_screen.dart';
+import 'auth_screen.dart';
 import 'db_helper.dart';
+import 'settings_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +59,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   int _selectedTab = 0;
   double _dailyGoal = 60.0;
+  bool _showGoalAlerts = true;
+  bool _showDailySummary = true;
   List<Map<String, dynamic>> _logs = [];
   double _todayUsage = 0.0;
   bool _isLoading = true;
@@ -150,7 +156,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Daily target updated to ${newGoal.toStringAsFixed(0)} L'),
+        content: Text(
+          'Daily target updated to ${newGoal.toStringAsFixed(0)} L',
+        ),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -189,7 +197,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   void _onLogoutToGuest() async {
     final guest = await DatabaseHelper.instance.getGuestUser();
-    final guestGoal = await DatabaseHelper.instance.getDailyGoal(guest['id'] as int);
+    final guestGoal = await DatabaseHelper.instance.getDailyGoal(
+      guest['id'] as int,
+    );
 
     if (!mounted) return;
     setState(() {
@@ -210,22 +220,62 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
-  void _showAuthModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => AuthModalSheet(
-        guestLogsCount: _isGuest ? _logs.length : 0,
-        onSuccess: (userId, username, transferred) {
-          _onUserLoggedIn(
-            userId: userId,
-            username: username,
-            transferredGuestData: transferred,
-          );
-        },
+  void _openAuthPage({required bool isLogin}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => AuthScreen(
+          isLogin: isLogin,
+          guestLogsCount: _isGuest ? _logs.length : 0,
+          onSuccess: (userId, username, transferred) {
+            _onUserLoggedIn(
+              userId: userId,
+              username: username,
+              transferredGuestData: transferred,
+            );
+          },
+        ),
       ),
     );
+  }
+
+  void _openAlertsPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => AlertsScreen(
+          todayUsage: _todayUsage,
+          dailyGoal: _dailyGoal,
+          showGoalAlert: _showGoalAlerts,
+          showDailySummary: _showDailySummary,
+        ),
+      ),
+    );
+  }
+
+  void _openSettingsPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => SettingsScreen(
+          dailyGoal: _dailyGoal,
+          onGoalChanged: _updateDailyGoal,
+          showGoalAlert: _showGoalAlerts,
+          onShowGoalAlertChanged: (value) {
+            setState(() => _showGoalAlerts = value);
+          },
+          showDailySummary: _showDailySummary,
+          onShowDailySummaryChanged: (value) {
+            setState(() => _showDailySummary = value);
+          },
+        ),
+      ),
+    );
+  }
+
+  void _selectDrawerTab(int index) {
+    Navigator.pop(context);
+    setState(() => _selectedTab = index);
   }
 
   void _showAddEntrySheet() {
@@ -233,14 +283,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AddWaterLogSheet(
-        onAdd: _addWaterLog,
-      ),
+      builder: (_) => AddWaterLogSheet(onAdd: _addWaterLog),
     );
   }
 
   void _showSetGoalDialog() {
-    final goalController = TextEditingController(text: _dailyGoal.toStringAsFixed(0));
+    final goalController = TextEditingController(
+      text: _dailyGoal.toStringAsFixed(0),
+    );
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -250,7 +300,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           children: [
             Icon(Icons.tune, color: Colors.cyanAccent),
             SizedBox(width: 10),
-            Text('Set Daily Target', style: TextStyle(color: Colors.white, fontSize: 18)),
+            Text(
+              'Set Daily Target',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
           ],
         ),
         content: SingleChildScrollView(
@@ -265,17 +318,28 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: goalController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 autofocus: true,
-                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
                 decoration: InputDecoration(
                   labelText: 'Target Limit (Liters)',
                   labelStyle: const TextStyle(color: Colors.white70),
                   suffixText: 'L',
-                  suffixStyle: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold),
+                  suffixStyle: const TextStyle(
+                    color: Colors.cyanAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
                   filled: true,
                   fillColor: const Color(0x33000000),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: const BorderSide(color: Colors.cyanAccent),
@@ -288,13 +352,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white54),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.cyanAccent,
               foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onPressed: () {
               final newGoal = double.tryParse(goalController.text.trim());
@@ -303,7 +372,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 Navigator.pop(dialogContext);
               }
             },
-            child: const Text('Save Limit', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Save Limit',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -313,6 +385,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: _buildNavigationDrawer(),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -330,7 +403,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               // Body view based on active tab
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Colors.cyanAccent))
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.cyanAccent,
+                        ),
+                      )
                     : IndexedStack(
                         index: _selectedTab,
                         children: [
@@ -361,7 +438,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               backgroundColor: Colors.cyanAccent,
               foregroundColor: Colors.black,
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Log Usage', style: TextStyle(fontWeight: FontWeight.bold)),
+              label: const Text(
+                'Log Usage',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             )
           : null,
       bottomNavigationBar: NavigationBarTheme(
@@ -369,7 +449,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           indicatorColor: Colors.cyanAccent.withValues(alpha: 0.2),
           labelTextStyle: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
-              return const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 12);
+              return const TextStyle(
+                color: Colors.cyanAccent,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              );
             }
             return const TextStyle(color: Colors.white54, fontSize: 12);
           }),
@@ -409,7 +493,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             NavigationDestination(
               icon: Icon(Icons.person_outline),
               selectedIcon: Icon(Icons.person),
-              label: 'Account',
+              label: 'Profile',
             ),
           ],
         ),
@@ -420,17 +504,29 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   Widget _buildTopHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       margin: const EdgeInsets.fromLTRB(14, 10, 14, 6),
       decoration: BoxDecoration(
         color: const Color(0x33000000),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.25), width: 1.2),
+        border: Border.all(
+          color: Colors.cyanAccent.withValues(alpha: 0.25),
+          width: 1.2,
+        ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          Builder(
+            builder: (context) => IconButton(
+              tooltip: 'Open navigation menu',
+              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+              padding: EdgeInsets.zero,
+              onPressed: () => Scaffold.of(context).openDrawer(),
+              icon: const Icon(Icons.menu, color: Colors.white70),
+            ),
+          ),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
@@ -440,7 +536,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.water_drop_rounded, size: 20, color: Colors.white),
+                child: const Icon(
+                  Icons.water_drop_rounded,
+                  size: 20,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(width: 10),
               Column(
@@ -456,12 +556,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       letterSpacing: 1.5,
                     ),
                   ),
-                  Text(
-                    _isGuest ? 'Guest Mode' : _currentUsername,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
+                  SizedBox(
+                    width: 100,
+                    child: Text(
+                      _isGuest ? 'Guest Mode' : _currentUsername,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -469,90 +574,147 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             ],
           ),
 
-          // User status action button
-          if (_isGuest)
-            InkWell(
-              onTap: _showAuthModal,
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.cyanAccent.shade400, Colors.blue.shade600],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.login_rounded, size: 16, color: Colors.black),
-                    SizedBox(width: 5),
-                    Text(
-                      'Log In',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            PopupMenuButton<String>(
-              icon: CircleAvatar(
-                radius: 16,
-                backgroundColor: Colors.cyanAccent.withValues(alpha: 0.2),
-                child: Text(
-                  _currentUsername.isNotEmpty ? _currentUsername[0].toUpperCase() : 'U',
-                  style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold),
-                ),
-              ),
-              color: const Color(0xFF1E293B),
-              onSelected: (value) {
-                if (value == 'logout') {
-                  _onLogoutToGuest();
-                } else if (value == 'switch') {
-                  _showAuthModal();
-                }
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  enabled: false,
-                  child: Text('Logged in as $_currentUsername',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                ),
-                const PopupMenuDivider(),
-                const PopupMenuItem(
-                  value: 'switch',
-                  child: Row(
-                    children: [
-                      Icon(Icons.switch_account, color: Colors.cyanAccent, size: 18),
-                      SizedBox(width: 8),
-                      Text('Switch Account', style: TextStyle(color: Colors.white)),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'logout',
-                  child: Row(
-                    children: [
-                      Icon(Icons.logout, color: Colors.redAccent, size: 18),
-                      SizedBox(width: 8),
-                      Text('Log Out to Guest', style: TextStyle(color: Colors.white)),
-                    ],
-                  ),
-                ),
-              ],
+          const Spacer(),
+          IconButton(
+            tooltip: 'Notifications and alerts',
+            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+            padding: EdgeInsets.zero,
+            onPressed: _openAlertsPage,
+            icon: const Icon(
+              Icons.notifications_outlined,
+              color: Colors.cyanAccent,
             ),
+          ),
+          IconButton(
+            tooltip: 'Settings',
+            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+            padding: EdgeInsets.zero,
+            onPressed: _openSettingsPage,
+            icon: const Icon(Icons.settings_outlined, color: Colors.white70),
+          ),
         ],
       ),
     );
   }
 
+  Widget _buildNavigationDrawer() {
+    return Drawer(
+      backgroundColor: const Color(0xFF0F172A),
+      child: SafeArea(
+        child: Column(
+          children: [
+            UserAccountsDrawerHeader(
+              decoration: const BoxDecoration(color: Color(0xFF075985)),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.cyanAccent.withValues(alpha: 0.2),
+                child: Icon(
+                  _isGuest ? Icons.person_outline : Icons.person,
+                  color: Colors.cyanAccent,
+                ),
+              ),
+              accountName: Text(_isGuest ? 'Guest Mode' : _currentUsername),
+              accountEmail: Text(
+                _isGuest ? 'Local profile' : 'Smart Water profile',
+              ),
+            ),
+            _drawerItem(
+              icon: Icons.water_drop_outlined,
+              label: 'Tracker',
+              selected: _selectedTab == 0,
+              onTap: () => _selectDrawerTab(0),
+            ),
+            _drawerItem(
+              icon: Icons.bar_chart_outlined,
+              label: 'Analytics',
+              selected: _selectedTab == 1,
+              onTap: () => _selectDrawerTab(1),
+            ),
+            _drawerItem(
+              icon: Icons.history_outlined,
+              label: 'History',
+              selected: _selectedTab == 2,
+              onTap: () => _selectDrawerTab(2),
+            ),
+            _drawerItem(
+              icon: Icons.notifications_outlined,
+              label: 'Notifications & Alerts',
+              onTap: () {
+                Navigator.pop(context);
+                _openAlertsPage();
+              },
+            ),
+            _drawerItem(
+              icon: Icons.person_outline,
+              label: 'Profile',
+              selected: _selectedTab == 3,
+              onTap: () => _selectDrawerTab(3),
+            ),
+            const Divider(color: Colors.white24),
+            if (_isGuest) ...[
+              _drawerItem(
+                icon: Icons.login,
+                label: 'Sign In',
+                onTap: () {
+                  Navigator.pop(context);
+                  _openAuthPage(isLogin: true);
+                },
+              ),
+              _drawerItem(
+                icon: Icons.person_add_alt_1,
+                label: 'Register',
+                onTap: () {
+                  Navigator.pop(context);
+                  _openAuthPage(isLogin: false);
+                },
+              ),
+            ] else ...[
+              _drawerItem(
+                icon: Icons.switch_account,
+                label: 'Switch Account',
+                onTap: () {
+                  Navigator.pop(context);
+                  _openAuthPage(isLogin: true);
+                },
+              ),
+              _drawerItem(
+                icon: Icons.logout,
+                label: 'Log Out',
+                onTap: () {
+                  Navigator.pop(context);
+                  _onLogoutToGuest();
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _drawerItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool selected = false,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: selected ? Colors.cyanAccent : Colors.white70),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: selected ? Colors.cyanAccent : Colors.white,
+          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      selected: selected,
+      selectedTileColor: Colors.cyanAccent.withValues(alpha: 0.1),
+      onTap: onTap,
+    );
+  }
+
   Widget _buildTrackerTab() {
-    final double percentage = (_dailyGoal > 0 ? (_todayUsage / _dailyGoal) : 0.0).clamp(0.0, 1.0);
+    final double percentage =
+        (_dailyGoal > 0 ? (_todayUsage / _dailyGoal) : 0.0).clamp(0.0, 1.0);
     final bool isOverLimit = _todayUsage > _dailyGoal;
 
     // Filter today's logs for quick view
@@ -576,11 +738,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               decoration: BoxDecoration(
                 color: const Color(0x260284C7),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.2)),
+                border: Border.all(
+                  color: Colors.cyanAccent.withValues(alpha: 0.2),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline, color: Colors.cyanAccent, size: 20),
+                  const Icon(
+                    Icons.info_outline,
+                    color: Colors.cyanAccent,
+                    size: 20,
+                  ),
                   const SizedBox(width: 10),
                   const Expanded(
                     child: Text(
@@ -589,13 +757,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: _showAuthModal,
+                    onPressed: () => _openAuthPage(isLogin: true),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    child: const Text('Sign In', style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+                    child: const Text(
+                      'Sign In',
+                      style: TextStyle(
+                        color: Colors.cyanAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -625,7 +800,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         Text(
                           '${(percentage * 100).toInt()}%',
                           style: TextStyle(
-                            color: isOverLimit ? Colors.redAccent : Colors.white,
+                            color: isOverLimit
+                                ? Colors.redAccent
+                                : Colors.white,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
@@ -638,7 +815,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Consumed Today', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                        const Text(
+                          'Consumed Today',
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
                         const SizedBox(height: 2),
                         Text(
                           '${_todayUsage.toStringAsFixed(1)} L',
@@ -654,7 +834,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           children: [
                             Text(
                               'Target: ${_dailyGoal.toStringAsFixed(0)} L',
-                              style: const TextStyle(color: Colors.white54, fontSize: 12),
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
                             ),
                             InkWell(
                               onTap: _showSetGoalDialog,
@@ -682,7 +865,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           const SizedBox(height: 16),
 
           // Quick Add Section (Mobile responsive with Expanded)
-          const Text('Quick Add', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+          const Text(
+            'Quick Add',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -729,7 +919,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Today\'s Usage', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+              const Text(
+                'Today\'s Usage',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               if (todayLogs.isNotEmpty)
                 Text(
                   '${todayLogs.length} entries',
@@ -752,9 +949,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 children: [
                   Icon(Icons.opacity, color: Colors.white30, size: 36),
                   SizedBox(height: 8),
-                  Text('No water usage recorded today', style: TextStyle(color: Colors.white54, fontSize: 13)),
+                  Text(
+                    'No water usage recorded today',
+                    style: TextStyle(color: Colors.white54, fontSize: 13),
+                  ),
                   SizedBox(height: 4),
-                  Text('Tap a Quick Add button above or + Log Usage below', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                  Text(
+                    'Tap a Quick Add button above or + Log Usage below',
+                    style: TextStyle(color: Colors.white38, fontSize: 11),
+                  ),
                 ],
               ),
             )
@@ -782,11 +985,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.water_damage_outlined, size: 54, color: Colors.white30),
+                  const Icon(
+                    Icons.water_damage_outlined,
+                    size: 54,
+                    color: Colors.white30,
+                  ),
                   const SizedBox(height: 16),
-                  const Text('No History Yet', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'No History Yet',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  const Text('Logged activities will appear here chronologically.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white54)),
+                  const Text(
+                    'Logged activities will appear here chronologically.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white54),
+                  ),
                 ],
               ),
             ),
@@ -798,30 +1016,59 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Total Records (${_logs.length})', style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Total Records (${_logs.length})',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     TextButton.icon(
                       onPressed: () {
                         showDialog(
                           context: context,
                           builder: (c) => AlertDialog(
                             backgroundColor: const Color(0xFF1E293B),
-                            title: const Text('Clear All Logs?', style: TextStyle(color: Colors.white)),
-                            content: const Text('This will delete all saved water logs on this device.', style: TextStyle(color: Colors.white70)),
+                            title: const Text(
+                              'Clear All Logs?',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            content: const Text(
+                              'This will delete all saved water logs on this device.',
+                              style: TextStyle(color: Colors.white70),
+                            ),
                             actions: [
-                              TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel', style: TextStyle(color: Colors.white54))),
+                              TextButton(
+                                onPressed: () => Navigator.pop(c),
+                                child: const Text(
+                                  'Cancel',
+                                  style: TextStyle(color: Colors.white54),
+                                ),
+                              ),
                               TextButton(
                                 onPressed: () {
                                   Navigator.pop(c);
                                   _clearAllLogs();
                                 },
-                                child: const Text('Clear All', style: TextStyle(color: Colors.redAccent)),
+                                child: const Text(
+                                  'Clear All',
+                                  style: TextStyle(color: Colors.redAccent),
+                                ),
                               ),
                             ],
                           ),
                         );
                       },
-                      icon: const Icon(Icons.delete_sweep, size: 18, color: Colors.redAccent),
-                      label: const Text('Clear All', style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                      icon: const Icon(
+                        Icons.delete_sweep,
+                        size: 18,
+                        color: Colors.redAccent,
+                      ),
+                      label: const Text(
+                        'Clear All',
+                        style: TextStyle(color: Colors.redAccent, fontSize: 12),
+                      ),
                     ),
                   ],
                 ),
@@ -842,11 +1089,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   Widget _buildProfileTab() {
-    double lifetimeTotal = 0.0;
-    for (var item in _logs) {
-      lifetimeTotal += (item['amount'] as num).toDouble();
-    }
-
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(16.0),
@@ -864,15 +1106,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: _isGuest ? Colors.white12 : Colors.cyanAccent.withValues(alpha: 0.2),
+                          color: _isGuest
+                              ? Colors.white12
+                              : Colors.cyanAccent.withValues(alpha: 0.2),
                         ),
                         child: Icon(
-                          _isGuest ? Icons.person_outline : Icons.verified_user,
+                          Icons.account_circle_rounded,
                           color: _isGuest ? Colors.white70 : Colors.cyanAccent,
-                          size: 30,
+                          size: 42,
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -882,14 +1126,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           children: [
                             Text(
                               _isGuest ? 'Guest Account' : _currentUsername,
-                              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               _isGuest
                                   ? 'Using offline local storage'
                                   : 'Logged-in user (SQLite local)',
-                              style: const TextStyle(color: Colors.white54, fontSize: 12),
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
@@ -910,11 +1161,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           backgroundColor: Colors.cyanAccent,
                           foregroundColor: Colors.black,
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
-                        onPressed: _showAuthModal,
+                        onPressed: () => _openAuthPage(isLogin: true),
                         icon: const Icon(Icons.login),
-                        label: const Text('Log In / Register', style: TextStyle(fontWeight: FontWeight.bold)),
+                        label: const Text(
+                          'Log In / Register',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                   ] else ...[
@@ -925,22 +1181,35 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: Colors.cyanAccent),
                               padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
                             ),
-                            onPressed: _showAuthModal,
-                            icon: const Icon(Icons.switch_account, color: Colors.cyanAccent, size: 18),
-                            label: const Text('Switch User', style: TextStyle(color: Colors.cyanAccent)),
+                            onPressed: () => _openAuthPage(isLogin: true),
+                            icon: const Icon(
+                              Icons.switch_account,
+                              color: Colors.cyanAccent,
+                              size: 18,
+                            ),
+                            label: const Text(
+                              'Switch User',
+                              style: TextStyle(color: Colors.cyanAccent),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.redAccent.withValues(alpha: 0.2),
+                              backgroundColor: Colors.redAccent.withValues(
+                                alpha: 0.2,
+                              ),
                               foregroundColor: Colors.redAccent,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
                             ),
                             onPressed: _onLogoutToGuest,
                             icon: const Icon(Icons.logout, size: 18),
@@ -955,90 +1224,54 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Daily Target Settings
           Card(
             color: const Color(0x261E293B),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.tune, color: Colors.cyanAccent, size: 20),
-                          SizedBox(width: 8),
-                          Text('Daily Consumption Target', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      Text(
-                        '${_dailyGoal.toStringAsFixed(0)} L',
-                        style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Slider(
-                    value: _dailyGoal.clamp(10.0, 200.0),
-                    min: 10.0,
-                    max: 200.0,
-                    divisions: 38,
-                    activeColor: Colors.cyanAccent,
-                    inactiveColor: Colors.white12,
-                    label: '${_dailyGoal.toStringAsFixed(0)} L',
-                    onChanged: (val) {
-                      setState(() => _dailyGoal = val);
-                    },
-                    onChangeEnd: (val) {
-                      _updateDailyGoal(val);
-                    },
-                  ),
                   const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('10 L (Minimal)', style: TextStyle(color: Colors.white38, fontSize: 11)),
-                      Text('200 L (High)', style: TextStyle(color: Colors.white38, fontSize: 11)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Lifetime Stats Card
-          Card(
-            color: const Color(0x261E293B),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Usage Statistics', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildProfileStatItem('Lifetime Tracked', '${lifetimeTotal.toStringAsFixed(1)} L'),
+                      Icon(
+                        Icons.badge_outlined,
+                        color: Colors.cyanAccent,
+                        size: 20,
                       ),
-                      Expanded(
-                        child: _buildProfileStatItem('Total Entries', '${_logs.length}'),
+                      SizedBox(width: 8),
+                      Text(
+                        'Account Details',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildProfileStatItem('Database Engine', 'SQLite (Local)'),
-                      ),
-                      Expanded(
-                        child: _buildProfileStatItem('Platform', 'Mobile & Desktop'),
-                      ),
-                    ],
+                  const SizedBox(height: 14),
+                  _buildProfileDetailRow(
+                    'Username',
+                    _currentUsername,
+                    Icons.person_outline,
+                  ),
+                  const Divider(color: Colors.white12, height: 20),
+                  _buildProfileDetailRow(
+                    'Account type',
+                    _isGuest ? 'Guest' : 'Registered account',
+                    Icons.verified_user_outlined,
+                  ),
+                  const Divider(color: Colors.white12, height: 20),
+                  _buildProfileDetailRow(
+                    'Local account ID',
+                    '$_currentUserId',
+                    Icons.tag,
+                  ),
+                  const Divider(color: Colors.white12, height: 20),
+                  _buildProfileDetailRow(
+                    'Saved water records',
+                    '${_logs.length}',
+                    Icons.water_drop_outlined,
                   ),
                 ],
               ),
@@ -1052,16 +1285,29 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             decoration: BoxDecoration(
               color: const Color(0x260284C7),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.2)),
+              border: Border.all(
+                color: Colors.cyanAccent.withValues(alpha: 0.2),
+              ),
             ),
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.lightbulb_outline, color: Colors.amberAccent, size: 20),
+                    Icon(
+                      Icons.lightbulb_outline,
+                      color: Colors.amberAccent,
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
-                    Text('Water Saving Fact', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(
+                      'Water Saving Fact',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
                   ],
                 ),
                 SizedBox(height: 8),
@@ -1078,18 +1324,40 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
-  Widget _buildProfileStatItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildProfileDetailRow(String label, String value, IconData icon) {
+    return Row(
       children: [
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
-        const SizedBox(height: 2),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+        Icon(icon, color: Colors.white54, size: 18),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(color: Colors.white60, fontSize: 13),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildQuickActionButton(String label, String amount, IconData icon, VoidCallback onTap) {
+  Widget _buildQuickActionButton(
+    String label,
+    String amount,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -1109,7 +1377,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               fit: BoxFit.scaleDown,
               child: Text(
                 label,
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(height: 2),
@@ -1136,15 +1408,24 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     if (rawTimestamp.contains('T')) {
       final parts = rawTimestamp.split('T');
       final datePart = parts[0];
-      final timePart = parts[1].length >= 5 ? parts[1].substring(0, 5) : parts[1];
+      final timePart = parts[1].length >= 5
+          ? parts[1].substring(0, 5)
+          : parts[1];
       dateDisplay = '$datePart • $timePart';
     }
 
     IconData icon = Icons.water_drop;
-    if (activity.toLowerCase().contains('drink')) icon = Icons.local_drink;
-    if (activity.toLowerCase().contains('shower')) icon = Icons.shower;
-    if (activity.toLowerCase().contains('laundry')) icon = Icons.local_laundry_service;
-    if (activity.toLowerCase().contains('garden') || activity.toLowerCase().contains('plant')) {
+    if (activity.toLowerCase().contains('drink')) {
+      icon = Icons.local_drink;
+    }
+    if (activity.toLowerCase().contains('shower')) {
+      icon = Icons.shower;
+    }
+    if (activity.toLowerCase().contains('laundry')) {
+      icon = Icons.local_laundry_service;
+    }
+    if (activity.toLowerCase().contains('garden') ||
+        activity.toLowerCase().contains('plant')) {
       icon = Icons.grass;
     }
 
@@ -1159,7 +1440,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         ),
         title: Text(
           activity,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
         ),
         subtitle: Text(
           dateDisplay,
@@ -1176,11 +1461,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ),
               child: Text(
                 '${amount.toStringAsFixed(1)} L',
-                style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                style: const TextStyle(
+                  color: Colors.cyanAccent,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 19),
+              icon: const Icon(
+                Icons.delete_outline,
+                color: Colors.redAccent,
+                size: 19,
+              ),
               onPressed: () => _deleteLog(id),
             ),
           ],
@@ -1261,7 +1554,14 @@ class _AddWaterLogSheetState extends State<AddWaterLogSheet> {
                   children: [
                     Icon(Icons.add_circle_outline, color: Colors.cyanAccent),
                     SizedBox(width: 8),
-                    Text('Log Water Usage', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(
+                      'Log Water Usage',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -1272,10 +1572,20 @@ class _AddWaterLogSheetState extends State<AddWaterLogSheet> {
                   runSpacing: 6,
                   children: _commonActivities.map((act) {
                     return ActionChip(
-                      label: Text(act, style: const TextStyle(fontSize: 12, color: Colors.white)),
+                      label: Text(
+                        act,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
+                        ),
+                      ),
                       backgroundColor: const Color(0x260284C7),
-                      side: BorderSide(color: Colors.cyanAccent.withValues(alpha: 0.3)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      side: BorderSide(
+                        color: Colors.cyanAccent.withValues(alpha: 0.3),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       onPressed: () {
                         setState(() => _activityController.text = act);
                       },
@@ -1292,37 +1602,52 @@ class _AddWaterLogSheetState extends State<AddWaterLogSheet> {
                     labelStyle: const TextStyle(color: Colors.white70),
                     filled: true,
                     fillColor: const Color(0x33000000),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: const BorderSide(color: Colors.cyanAccent),
                     ),
                   ),
-                  validator: (val) => (val == null || val.trim().isEmpty) ? 'Enter activity' : null,
+                  validator: (val) => (val == null || val.trim().isEmpty)
+                      ? 'Enter activity'
+                      : null,
                 ),
                 const SizedBox(height: 14),
 
                 TextFormField(
                   controller: _amountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     labelText: 'Amount (Liters)',
                     labelStyle: const TextStyle(color: Colors.white70),
                     suffixText: 'L',
-                    suffixStyle: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold),
+                    suffixStyle: const TextStyle(
+                      color: Colors.cyanAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
                     filled: true,
                     fillColor: const Color(0x33000000),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: const BorderSide(color: Colors.cyanAccent),
                     ),
                   ),
                   validator: (val) {
-                    if (val == null || val.trim().isEmpty) return 'Enter amount';
+                    if (val == null || val.trim().isEmpty) {
+                      return 'Enter amount';
+                    }
                     final parsed = double.tryParse(val.trim());
-                    if (parsed == null || parsed <= 0) return 'Enter valid positive number';
+                    if (parsed == null || parsed <= 0) {
+                      return 'Enter valid positive number';
+                    }
                     return null;
                   },
                 ),
@@ -1331,7 +1656,10 @@ class _AddWaterLogSheetState extends State<AddWaterLogSheet> {
                 // Quick amount increment buttons
                 Row(
                   children: [
-                    const Text('Quick add:', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                    const Text(
+                      'Quick add:',
+                      style: TextStyle(color: Colors.white54, fontSize: 11),
+                    ),
                     const SizedBox(width: 8),
                     _buildIncrementChip('+0.5L', 0.5),
                     const SizedBox(width: 6),
@@ -1351,7 +1679,9 @@ class _AddWaterLogSheetState extends State<AddWaterLogSheet> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.cyanAccent,
                       foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     onPressed: () async {
                       if (_formKey.currentState!.validate()) {
@@ -1361,7 +1691,13 @@ class _AddWaterLogSheetState extends State<AddWaterLogSheet> {
                         if (context.mounted) Navigator.pop(context);
                       }
                     },
-                    child: const Text('Save Entry', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'Save Entry',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1382,7 +1718,14 @@ class _AddWaterLogSheetState extends State<AddWaterLogSheet> {
           color: Colors.white10,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(label, style: const TextStyle(color: Colors.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.cyanAccent,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
@@ -1391,7 +1734,8 @@ class _AddWaterLogSheetState extends State<AddWaterLogSheet> {
 /// Mobile Modal Bottom Sheet for optional Login & Register ("like usual applications")
 class AuthModalSheet extends StatefulWidget {
   final int guestLogsCount;
-  final Function(int userId, String username, bool transferredGuestData) onSuccess;
+  final Function(int userId, String username, bool transferredGuestData)
+  onSuccess;
 
   const AuthModalSheet({
     super.key,
@@ -1435,7 +1779,10 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
 
     try {
       if (_isLogin) {
-        final user = await DatabaseHelper.instance.loginUser(username, password);
+        final user = await DatabaseHelper.instance.loginUser(
+          username,
+          password,
+        );
         if (!mounted) return;
         if (user != null) {
           final userId = user['id'] as int;
@@ -1448,7 +1795,10 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
           });
         }
       } else {
-        final userId = await DatabaseHelper.instance.registerUser(username, password);
+        final userId = await DatabaseHelper.instance.registerUser(
+          username,
+          password,
+        );
         if (!mounted) return;
         widget.onSuccess(userId, username, _transferGuestData);
         Navigator.pop(context);
@@ -1493,7 +1843,11 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
               // Title and toggle
               Text(
                 _isLogin ? 'Welcome Back' : 'Create Account',
-                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -1523,7 +1877,9 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
-                            color: _isLogin ? Colors.cyanAccent : Colors.transparent,
+                            color: _isLogin
+                                ? Colors.cyanAccent
+                                : Colors.transparent,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Center(
@@ -1549,14 +1905,18 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
-                            color: !_isLogin ? Colors.cyanAccent : Colors.transparent,
+                            color: !_isLogin
+                                ? Colors.cyanAccent
+                                : Colors.transparent,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Center(
                             child: Text(
                               'Register',
                               style: TextStyle(
-                                color: !_isLogin ? Colors.black : Colors.white70,
+                                color: !_isLogin
+                                    ? Colors.black
+                                    : Colors.white70,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
                               ),
@@ -1576,14 +1936,26 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
                   decoration: BoxDecoration(
                     color: Colors.redAccent.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                    border: Border.all(
+                      color: Colors.redAccent.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline, color: Colors.redAccent, size: 18),
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.redAccent,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1597,10 +1969,16 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
                 decoration: InputDecoration(
                   labelText: 'Username',
                   labelStyle: const TextStyle(color: Colors.white70),
-                  prefixIcon: const Icon(Icons.person, color: Colors.white54, size: 20),
+                  prefixIcon: const Icon(
+                    Icons.person,
+                    color: Colors.white54,
+                    size: 20,
+                  ),
                   filled: true,
                   fillColor: const Color(0x33000000),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: const BorderSide(color: Colors.cyanAccent),
@@ -1616,18 +1994,27 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
                 decoration: InputDecoration(
                   labelText: 'Password',
                   labelStyle: const TextStyle(color: Colors.white70),
-                  prefixIcon: const Icon(Icons.lock, color: Colors.white54, size: 20),
+                  prefixIcon: const Icon(
+                    Icons.lock,
+                    color: Colors.white54,
+                    size: 20,
+                  ),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                       color: Colors.white54,
                       size: 20,
                     ),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                   filled: true,
                   fillColor: const Color(0x33000000),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: const BorderSide(color: Colors.cyanAccent),
@@ -1648,7 +2035,8 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
                     'Keep my ${widget.guestLogsCount} guest water logs in this account',
                     style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
-                  onChanged: (val) => setState(() => _transferGuestData = val ?? true),
+                  onChanged: (val) =>
+                      setState(() => _transferGuestData = val ?? true),
                 ),
               ],
               const SizedBox(height: 16),
@@ -1660,14 +2048,26 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.cyanAccent,
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   onPressed: _submitting ? null : _submit,
                   child: _submitting
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.black,
+                          ),
+                        )
                       : Text(
                           _isLogin ? 'Sign In' : 'Create Account',
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                 ),
               ),
@@ -1676,7 +2076,10 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
               // Dismiss / continue as guest
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Continue as Guest', style: TextStyle(color: Colors.white54, fontSize: 13)),
+                child: const Text(
+                  'Continue as Guest',
+                  style: TextStyle(color: Colors.white54, fontSize: 13),
+                ),
               ),
             ],
           ),
